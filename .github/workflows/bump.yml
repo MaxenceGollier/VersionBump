@@ -100,7 +100,10 @@ jobs:
           BRANCH="jsobot/bump-version-${{ steps.bump.outputs.new_version }}"
           git config user.name  "jsobot"
           git config user.email "jsobot@users.noreply.github.com"
+          git stash  # Project.toml has been modified
+          git pull   # pull freshly merged branch
           git checkout -b $BRANCH
+          git stash pop
           git add Project.toml
           git commit -m "Bump version to ${{ steps.bump.outputs.new_version }}"
           git push origin $BRANCH
