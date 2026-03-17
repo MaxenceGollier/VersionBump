@@ -118,7 +118,7 @@ jobs:
               repo: context.repo.repo,
               title: `Bump version to ${{ steps.bump.outputs.new_version }}`,
               head: '${{ steps.commit.outputs.branch }}',
-              base: '${{ github.event.issue.pull_request.base.ref }}',
+              base: 'main',
               body: `Automated version bump to \`${{ steps.bump.outputs.new_version }}\``
             })
             core.setOutput('pr_url', pr.data.html_url)
