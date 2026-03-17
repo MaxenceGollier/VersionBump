@@ -38,7 +38,7 @@ jobs:
             })
 
       - name: Checkout PR branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.issue.pull_request.base.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -98,9 +98,12 @@ jobs:
         run: |
           git config user.name  "jsobot"
           git config user.email "jsobot@users.noreply.github.com"
+          git checkout -b ENV["BRANCHNAME"]
           git add Project.toml
           git commit -m "Bump version to ${{ steps.versions.outputs.new_version }}"
-          git push
+          git push origin ENV["BRANCHNAME"]
+        env:
+          BRANCHNAME: v${{ steps.versions.outputs.new_version }}
 
       - name: Comment on PR
         uses: actions/github-script@v7
