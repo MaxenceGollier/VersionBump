@@ -1,0 +1,87 @@
+name: Bump Version
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  bump-version:
+    if: |
+      github.event.issue.pull_request != null &&
+      startsWith(github.event.comment.body, '@jsobot version')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Parse version bump command
+        id: parse
+        run: |
+          COMMENT="${{ github.event.comment.body }}"
+          PART=$(echo "$COMMENT" | grep -oP '@jsobot version \K(major|minor|patch)')
+          if [ -z "$PART" ]; then
+            echo "Comment did not match expected format '@jsobot version [major|minor|patch]'"
+            exit 1
+          fi
+          echo "part=$PART" >> $GITHUB_OUTPUT
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.issue.pull_request.head.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Julia
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: "1"
+
+      - name: Bump version in Project.toml
+        id: bump
+        run: |
+          julia --project=. << 'EOF'
+          using TOML
+
+          function bump_version(version::String, part::Symbol)::String
+              parts = split(version, '.')
+              length(parts) == 3 || throw(ArgumentError("Version must be in format 'major.minor.patch', got: $version"))
+              all(all(isdigit, p) for p in parts) || throw(ArgumentError("Version parts must be numeric, got: $version"))
+
+              major, minor, patch = parse.(Int, parts)
+
+              major, minor, patch = if part == :major
+                  (major + 1, 0, 0)
+              elseif part == :minor
+                  (major, minor + 1, 0)
+              elseif part == :patch
+                  (major, minor, patch + 1)
+              else
+                  throw(ArgumentError("part must be :major, :minor or :patch, got: $part"))
+              end
+
+              return "$major.$minor.$patch"
+          end
+
+          project = TOML.parsefile("Project.toml")
+          old_version = project["version"]
+          part = Symbol(ENV["PART"])
+          new_version = bump_version(old_version, part)
+          project["version"] = new_version
+          open("Project.toml", "w") do io
+              TOML.print(io, project)
+          end
+
+          println("OLD_VERSION=$old_version")
+          println("NEW_VERSION=$new_version")
+          EOF
+        env:
+          PART: ${{ steps.parse.outputs.part }}
+
+      - name: Commit and push
+        run: |
+          git config user.name  "jsobot"
+          git config user.email "jsobot@users.noreply.github.com"
+          git add Project.toml
+          git commit -m "Bump version to ${{ steps.versions.outputs.new_version }}"
+          git push
