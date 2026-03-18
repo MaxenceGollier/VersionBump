@@ -22,11 +22,12 @@ jobs:
         id: parse
         run: |
           COMMENT="${{ github.event.comment.body }}"
-          PART=$(echo "$COMMENT" | grep -oP '@jsobot version \K(major|minor|patch)')
+          PART=$(echo "$COMMENT" | grep -ioP '@jsobot version \K(major|minor|patch)')
           if [ -z "$PART" ]; then
             echo "Comment did not match expected format '@jsobot version [major|minor|patch]'"
             exit 1
           fi
+          PART=$(echo "$PART" | tr '[:upper:]' '[:lower:]')
           echo "part=$PART" >> $GITHUB_OUTPUT
 
       - name: Merge PR via rebase and delete branch
@@ -40,11 +41,11 @@ jobs:
               pull_number: context.issue.number,
               merge_method: 'rebase'
             })
-            # await github.rest.git.deleteRef({
-            #   owner: context.repo.owner,
-            #   repo: context.repo.repo,
-            #   ref: `heads/${process.env.BRANCH}`
-            # })
+            // await github.rest.git.deleteRef({
+            //  owner: context.repo.owner,
+            //  repo: context.repo.repo,
+            //  ref: `heads/${process.env.BRANCH}`
+            //})
 
       - name: Checkout PR branch
         uses: actions/checkout@v6
