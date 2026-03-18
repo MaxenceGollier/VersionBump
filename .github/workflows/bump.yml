@@ -30,7 +30,7 @@ jobs:
           PART=$(echo "$PART" | tr '[:upper:]' '[:lower:]')
           echo "part=$PART" >> $GITHUB_OUTPUT
 
-      - name: Merge PR via rebase and delete branch
+      - name: Merge PR via rebase
         # Merge the PR where the comment was posted to prepare for the version bump.
         uses: actions/github-script@v8
         with:
@@ -41,11 +41,6 @@ jobs:
               pull_number: context.issue.number,
               merge_method: 'rebase'
             })
-            // await github.rest.git.deleteRef({
-            //  owner: context.repo.owner,
-            //  repo: context.repo.repo,
-            //  ref: `heads/${process.env.BRANCH}`
-            //})
 
       - name: Checkout PR branch
         uses: actions/checkout@v6
