@@ -1,0 +1,69 @@
+name: Merge Version Bump PR
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  merge-version-bump:
+    if: |
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch != github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Find version bump PR for this branch
+        id: find_pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          PR=$(gh pr list \
+            --repo ${{ github.repository }} \
+            --head "$BRANCH" \
+            --json number,title,baseRefName,commits \
+            --jq '.[] | select(.title | startswith("Bump version to "))')
+
+          if [ -z "$PR" ]; then
+            echo "No version bump PR found for branch $BRANCH, skipping."
+            exit 0
+          fi
+
+          PR_NUMBER=$(echo "$PR" | jq -r '.number')
+          BASE_REF=$(echo "$PR" | jq -r '.baseRefName')
+          TITLE=$(echo "$PR" | jq -r '.title')
+          VERSION=$(echo "$TITLE" | grep -oP 'Bump version to \K.*')
+          LATEST_SHA=$(echo "$PR" | jq -r '.commits[-1].oid')
+
+          echo "pr_number=$PR_NUMBER"   >> $GITHUB_OUTPUT
+          echo "base_ref=$BASE_REF"     >> $GITHUB_OUTPUT
+          echo "version=$VERSION"       >> $GITHUB_OUTPUT
+          echo "latest_sha=$LATEST_SHA" >> $GITHUB_OUTPUT
+
+      - name: Merge version bump PR
+        if: steps.find_pr.outputs.pr_number != ''
+        id: merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge ${{ steps.find_pr.outputs.pr_number }} \
+            --repo ${{ github.repository }} \
+            --rebase \
+            --delete-branch
+
+      - name: Comment on merge commit
+        if: steps.find_pr.outputs.pr_number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ steps.find_pr.outputs.latest_sha }}
+          VERSION: ${{ steps.find_pr.outputs.version }}
+        run: |
+          COMMENT="✅ Version \`$VERSION\` merged automatically by @jsobot after CI passed."
+          gh api \
+            --method POST \
+            /repos/${{ github.repository }}/commits/$SHA/comments \
+            --field body=$COMMENT
