@@ -131,31 +131,31 @@ jobs:
               base: 'main',
               body: `Automated version bump to \`${{ steps.bump.outputs.new_version }}\``
             })
-            //await github.rest.issues.addLabels({
-            //  owner: context.repo.owner,
-            //  repo: context.repo.repo,
-            //  issue_number: pr.data.number,
-            //  labels: ['cirrusci']
-            //})
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.data.number,
+              labels: ['cirrusci']
+            })
             core.setOutput('pr_number', pr.data.number)
 
-      - name: Close and reopen pull request
-        # ... to trigger CI.
-        uses: actions/github-script@v8
-        env:
-          PR_NUMBER: ${{ steps.open_pr.outputs.pr_number }}
-        with:
-          script: |
-            const owner = context.repo.owner
-            const repo  = context.repo.repo
-            const pull_number = parseInt(process.env.PR_NUMBER)
-
-            await github.rest.pulls.update({
-              owner, repo, pull_number,
-              state: 'closed'
-            })
-
-            await github.rest.pulls.update({
-              owner, repo, pull_number,
-              state: 'open'
-            })
+      # - name: Close and reopen pull request
+      #   # ... to trigger CI.
+      #   uses: actions/github-script@v8
+      #   env:
+      #     PR_NUMBER: ${{ steps.open_pr.outputs.pr_number }}
+      #   with:
+      #     script: |
+      #       const owner = context.repo.owner
+      #       const repo  = context.repo.repo
+      #       const pull_number = parseInt(process.env.PR_NUMBER)
+      #
+      #       await github.rest.pulls.update({
+      #         owner, repo, pull_number,
+      #         state: 'closed'
+      #       })
+      #
+      #       await github.rest.pulls.update({
+      #         owner, repo, pull_number,
+      #         state: 'open'
+      #       })
