@@ -1,38 +1,34 @@
 name: Merge Version Bump PR
 
 on:
-  check_run:
-    types: [completed]
+  workflow_run:
+    workflows: ["CI"]
 
 jobs:
   merge-version-bump:
-    # Run Action if external CI (here, CirrusCI) completed successfully and
+    # Run Action if CI completed successfully and
     # an open PR is found with title starting with "Bump version to" on the
     # current branch.
     if: |
-      github.event.check_run.conclusion == 'success' &&
-      github.event.check_run.app.name == 'Cirrus CI'
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch != github.event.repository.default_branch
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
 
     steps:
-      - name: Find version bump PR for this commit
+      - name: Find version bump PR for this branch
         id: find_pr
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SHA: ${{ github.event.check_run.head_sha }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
           PR=$(gh pr list \
             --repo ${{ github.repository }} \
-            --json number,title,baseRefName,headRefName,commits \
-            --jq --arg sha "$SHA" \
-            '.[] | select(
-                .title | startswith("Bump version to ")
-            ) | select(
-                .commits[] | .oid == $sha
-            )')
+            --head "$BRANCH" \
+            --json number,title,baseRefName,commits \
+            --jq '.[] | select(.title | startswith("Bump version to "))')
 
           if [ -z "$PR" ]; then
             echo "No version bump PR found for branch $BRANCH, skipping."
@@ -41,14 +37,15 @@ jobs:
 
           PR_NUMBER=$(echo "$PR" | jq -r '.number')
           BASE_REF=$(echo "$PR" | jq -r '.baseRefName')
-          BRANCH=$(echo "$PR" | jq -r '.headRefName')
           TITLE=$(echo "$PR" | jq -r '.title')
           VERSION=$(echo "$TITLE" | grep -oP 'Bump version to \K.*')
+          LATEST_SHA=$(echo "$PR" | jq -r '.commits[-1].oid')
 
           echo "pr_number=$PR_NUMBER"   >> $GITHUB_OUTPUT
           echo "base_ref=$BASE_REF"     >> $GITHUB_OUTPUT
           echo "branch=$BRANCH"         >> $GITHUB_OUTPUT
           echo "version=$VERSION"       >> $GITHUB_OUTPUT
+          echo "latest_sha=$LATEST_SHA" >> $GITHUB_OUTPUT
 
       - name: Merge version bump PR and delete branch
         if: steps.find_pr.outputs.pr_number != ''
