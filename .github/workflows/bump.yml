@@ -116,6 +116,7 @@ jobs:
           echo "branch=$BRANCH" >> $GITHUB_OUTPUT
 
       - name: Open pull request
+        id: open_pr
         # Label the pull request so CI runs on CirrusCI
         # because PRs created by a bot cannot trigger GitHub Actions.
         # See .cirrusci.yml.
@@ -130,10 +131,31 @@ jobs:
               base: 'main',
               body: `Automated version bump to \`${{ steps.bump.outputs.new_version }}\``
             })
-            await github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: pr.data.number,
-              labels: ['cirrusci']
+            //await github.rest.issues.addLabels({
+            //  owner: context.repo.owner,
+            //  repo: context.repo.repo,
+            //  issue_number: pr.data.number,
+            //  labels: ['cirrusci']
+            //})
+            core.setOutput('pr_number', pr.data.number)
+
+      - name: Close and reopen pull request
+        # ... to trigger CI.
+        uses: actions/github-script@v8
+        env:
+          PR_NUMBER: ${{ steps.open_pr.outputs.pr_number }}
+        with:
+          script: |
+            const owner = context.repo.owner
+            const repo  = context.repo.repo
+            const pull_number = parseInt(process.env.PR_NUMBER)
+
+            await github.rest.pulls.update({
+              owner, repo, pull_number,
+              state: 'closed'
             })
-            core.setOutput('pr_url', pr.data.html_url)
+
+            await github.rest.pulls.update({
+              owner, repo, pull_number,
+              state: 'open'
+            })
