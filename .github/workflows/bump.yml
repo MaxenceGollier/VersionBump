@@ -6,6 +6,7 @@ on:
 
 jobs:
   bump-version:
+    # Run this Action if a comment of the form "@jsobot version [major|minor|patch]" is posted.
     if: |
       github.event.issue.pull_request != null &&
       startsWith(github.event.comment.body, '@jsobot version')
@@ -16,6 +17,8 @@ jobs:
 
     steps:
       - name: Parse version bump command
+        # Determine whether a major, minor or patch version bump was requested.
+        # Add the vesion part to the environment so other steps can read it.
         id: parse
         run: |
           COMMENT="${{ github.event.comment.body }}"
@@ -26,7 +29,8 @@ jobs:
           fi
           echo "part=$PART" >> $GITHUB_OUTPUT
 
-      - name: Merge PR via rebase
+      - name: Merge PR via rebase and delete branch
+        # Merge the PR where the comment was posted to prepare for the version bump.
         uses: actions/github-script@v8
         with:
           script: |
@@ -35,6 +39,11 @@ jobs:
               repo: context.repo.repo,
               pull_number: context.issue.number,
               merge_method: 'rebase'
+            })
+            await github.rest.git.deleteRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `heads/${process.env.BRANCH}`
             })
 
       - name: Checkout PR branch
@@ -49,6 +58,7 @@ jobs:
           version: "1"
 
       - name: Bump version in Project.toml
+        # Edit Project.toml to bump the version as requested in the PR comment.
         id: bump
         run: |
           julia --project=. << 'EOF'
@@ -110,6 +120,9 @@ jobs:
           echo "branch=$BRANCH" >> $GITHUB_OUTPUT
 
       - name: Open pull request
+        # Label the pull request so CI runs on CirrusCI
+        # because PRs created by a bot cannot trigger GitHub Actions.
+        # See .cirrusci.yml.
         uses: actions/github-script@v8
         with:
           script: |
@@ -120,5 +133,11 @@ jobs:
               head: '${{ steps.commit.outputs.branch }}',
               base: 'main',
               body: `Automated version bump to \`${{ steps.bump.outputs.new_version }}\``
+            })
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.data.number,
+              labels: ['cirrusci']
             })
             core.setOutput('pr_url', pr.data.html_url)

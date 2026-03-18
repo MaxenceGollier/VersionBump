@@ -7,6 +7,9 @@ on:
 
 jobs:
   merge-version-bump:
+    # Run Action if external CI (here, CirrusCI) completed successfully and
+    # an open PR is found with title starting with "Bump version to" on the
+    # current branch.
     if: |
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch != github.event.repository.default_branch
@@ -44,7 +47,7 @@ jobs:
           echo "version=$VERSION"       >> $GITHUB_OUTPUT
           echo "latest_sha=$LATEST_SHA" >> $GITHUB_OUTPUT
 
-      - name: Merge version bump PR
+      - name: Merge version bump PR and delete branch
         if: steps.find_pr.outputs.pr_number != ''
         id: merge
         env:
@@ -56,6 +59,8 @@ jobs:
             --delete-branch
 
       - name: Get merge commit SHA
+        # When a PR is merged, the commit sha changes (!!!).
+        # Look for the commit sha on the tip of the base branch.
         if: steps.find_pr.outputs.pr_number != ''
         id: merge_commit
         env:
@@ -68,6 +73,8 @@ jobs:
           echo "sha=$SHA" >> $GITHUB_OUTPUT
 
       - name: Comment on merge commit
+        # Add a comment to the commit on the tip of the base branch
+        # to trigger registration.
         if: steps.find_pr.outputs.pr_number != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -78,3 +85,4 @@ jobs:
             --method POST \
             "/repos/${{ github.repository }}/commits/$SHA/comments" \
             --field body="✅ Version \`$VERSION\` merged automatically by @jsobot after CI passed."
+            # --field-body="@JuliaRegistrator register"
