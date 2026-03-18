@@ -74,8 +74,7 @@ jobs:
           SHA: ${{ steps.merge_commit.outputs.sha }}
           VERSION: ${{ steps.find_pr.outputs.version }}
         run: |
-          COMMENT="✅ Version \`$VERSION\` merged automatically by @jsobot after CI passed."
           gh api \
             --method POST \
             "/repos/${{ github.repository }}/commits/$SHA/comments" \
-            --field body=$COMMENT
+            --field body="✅ Version \`$VERSION\` merged automatically by @jsobot after CI passed."
