@@ -115,6 +115,13 @@ jobs:
           git push origin $BRANCH
           echo "branch=$BRANCH" >> $GITHUB_OUTPUT
 
+      - name: Generate GitHub App token
+        id: app_token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Open pull request
         id: open_pr
         # Label the pull request so CI runs on CirrusCI
@@ -122,6 +129,7 @@ jobs:
         # See .cirrusci.yml.
         uses: actions/github-script@v8
         with:
+          github-token: ${{ steps.app_token.outputs.token }}
           script: |
             const pr = await github.rest.pulls.create({
               owner: context.repo.owner,

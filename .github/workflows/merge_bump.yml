@@ -1,7 +1,8 @@
 name: Merge Version Bump PR
 
 on:
-  status:
+  check_run:
+    types: [completed]
 
 jobs:
   merge-version-bump:
@@ -9,8 +10,8 @@ jobs:
     # an open PR is found with title starting with "Bump version to" on the
     # current branch.
     if: |
-      github.event.state == 'success' &&
-      github.event.workflow_run.head_branch != github.event.repository.default_branch
+      github.event.check_run.conclusion == 'success' &&
+      github.event.check_run.app.name == 'Cirrus CI'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -21,7 +22,7 @@ jobs:
         id: find_pr
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SHA: ${{ github.event.sha }}
+          SHA: ${{ github.event.check_run.head_sha }}
         run: |
           PR=$(gh pr list \
             --repo ${{ github.repository }} \
