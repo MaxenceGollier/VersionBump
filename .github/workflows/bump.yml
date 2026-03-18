@@ -40,11 +40,11 @@ jobs:
               pull_number: context.issue.number,
               merge_method: 'rebase'
             })
-            await github.rest.git.deleteRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: `heads/${process.env.BRANCH}`
-            })
+            # await github.rest.git.deleteRef({
+            #   owner: context.repo.owner,
+            #   repo: context.repo.repo,
+            #   ref: `heads/${process.env.BRANCH}`
+            # })
 
       - name: Checkout PR branch
         uses: actions/checkout@v6
