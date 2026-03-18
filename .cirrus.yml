@@ -1,7 +1,8 @@
 macos_instance:
   image: ghcr.io/cirruslabs/macos-runner:tahoe
 task:
-  required_pr_labels: cirrusjl
+  required_pr_labels: cirrusci
+  skip: "!changesIncludeOnly('Project.toml')"
   name: maOS M1
   env:
     matrix:
