@@ -25,8 +25,6 @@ jobs:
             /repos/${{ github.repository }}/collaborators/$COMMENTER/permission \
             --jq '.permission')
 
-          fi
-
       - name: Parse version bump command
         # Determine whether a major, minor or patch version bump was requested.
         # Add the vesion part to the environment so other steps can read it.
